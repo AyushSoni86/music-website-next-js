@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@/utils/utils";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { createNoise3D } from "simplex-noise";
 
 type WavyBackgroundProps = {
@@ -37,7 +37,7 @@ export const WavyBackground = ({
   const hRef = useRef<number>(0);
   const ntRef = useRef<number>(0);
 
-  const getSpeed = (): number => {
+  const getSpeed = useCallback((): number => {
     switch (speed) {
       case "slow":
         return 0.001;
@@ -46,34 +46,36 @@ export const WavyBackground = ({
       default:
         return 0.001;
     }
-  };
+  }, [speed]);
 
-  const waveColors = colors ?? [
-    "#38bdf8",
-    "#818cf8",
-    "#c084fc",
-    "#e879f9",
-    "#22d3ee",
-  ];
-
-  const drawWave = (n: number) => {
-    const ctx = ctxRef.current;
-    if (!ctx) return;
-    ntRef.current += getSpeed();
-    for (let i = 0; i < n; i++) {
-      ctx.beginPath();
-      ctx.lineWidth = waveWidth || 50;
-      ctx.strokeStyle = waveColors[i % waveColors.length];
-      for (let x = 0; x < wRef.current; x += 5) {
-        const y = noise(x / 800, 0.3 * i, ntRef.current) * 100;
-        ctx.lineTo(x, y + hRef.current * 0.5);
+  const drawWave = useCallback(
+    (n: number) => {
+      const waveColors = colors ?? [
+        "#38bdf8",
+        "#818cf8",
+        "#c084fc",
+        "#e879f9",
+        "#22d3ee",
+      ];
+      const ctx = ctxRef.current;
+      if (!ctx) return;
+      ntRef.current += getSpeed();
+      for (let i = 0; i < n; i++) {
+        ctx.beginPath();
+        ctx.lineWidth = waveWidth || 50;
+        ctx.strokeStyle = waveColors[i % waveColors.length];
+        for (let x = 0; x < wRef.current; x += 5) {
+          const y = noise(x / 800, 0.3 * i, ntRef.current) * 100;
+          ctx.lineTo(x, y + hRef.current * 0.5);
+        }
+        ctx.stroke();
+        ctx.closePath();
       }
-      ctx.stroke();
-      ctx.closePath();
-    }
-  };
+    },
+    [getSpeed, noise, waveWidth, colors]
+  );
 
-  const render = () => {
+  const render = useCallback(() => {
     const ctx = ctxRef.current;
     if (!ctx) return;
     ctx.fillStyle = backgroundFill || "black";
@@ -81,9 +83,10 @@ export const WavyBackground = ({
     ctx.fillRect(0, 0, wRef.current, hRef.current);
     drawWave(5);
     animationIdRef.current = requestAnimationFrame(render);
-  };
+  }, [drawWave, backgroundFill, waveOpacity]);
 
-  const init = () => {
+  // Memoizing the `init` function to prevent unnecessary re-renders
+  const init = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -103,7 +106,7 @@ export const WavyBackground = ({
     };
 
     render();
-  };
+  }, [blur, render]); // `blur` is the only dependency that can change the `init` function
 
   useEffect(() => {
     init();
@@ -112,7 +115,7 @@ export const WavyBackground = ({
         cancelAnimationFrame(animationIdRef.current);
       }
     };
-  }, [blur, backgroundFill, speed, waveOpacity]); // Fixed missing dependencies
+  }, [init]); // Now `init` is memoized and used safely in the dependency array
 
   useEffect(() => {
     setIsSafari(
