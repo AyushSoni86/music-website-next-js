@@ -1,9 +1,8 @@
 "use client";
 
 import musicTestimonails from "../data/music_school_testimonials.json";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { InfiniteMovingCards } from "./ui/infinite-moving-cards";
-import { div } from "framer-motion/client";
 
 const TestimonailCards = () => {
   return (
